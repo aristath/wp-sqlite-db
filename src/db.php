@@ -46,10 +46,9 @@ namespace WP_SQLite_DB {
 	}
 
 	function pdo_log_error( $message, $data = null ) {
+		$admin_dir = 'wp-admin/';
 		if ( strpos( $_SERVER['SCRIPT_NAME'], 'wp-admin' ) !== false ) {
 			$admin_dir = '';
-		} else {
-			$admin_dir = 'wp-admin/';
 		}
 		die(
 			<<<HTML
@@ -70,10 +69,6 @@ namespace WP_SQLite_DB {
 
 HTML
 		);
-	}
-
-	if ( version_compare( PHP_VERSION, '5.4', '<' ) ) {
-		pdo_log_error( 'PHP version on this server is too old.', sprintf( 'Your server is running PHP version %d but this SQLite driver requires at least 5.4', phpversion() ) );
 	}
 
 	if ( ! extension_loaded( 'pdo' ) ) {
@@ -103,17 +98,11 @@ HTML
 	 * If DB_DIR is defined, it is used as FQDBDIR.
 	 */
 	if ( defined( 'DB_DIR' ) ) {
-		if ( substr( DB_DIR, -1, 1 ) != '/' ) {
-			define( 'FQDBDIR', DB_DIR . '/' );
-		} else {
-			define( 'FQDBDIR', DB_DIR );
-		}
+		define( 'FQDBDIR', trailingslashit( DB_DIR ) );
+	} elseif ( defined( 'WP_CONTENT_DIR' ) ) {
+		define( 'FQDBDIR', WP_CONTENT_DIR . '/database/' );
 	} else {
-		if ( defined( 'WP_CONTENT_DIR' ) ) {
-			define( 'FQDBDIR', WP_CONTENT_DIR . '/database/' );
-		} else {
-			define( 'FQDBDIR', ABSPATH . 'wp-content/database/' );
-		}
+		define( 'FQDBDIR', ABSPATH . 'wp-content/database/' );
 	}
 
 	/**
@@ -218,9 +207,7 @@ HTML
 		 * @return string representing the number of the month between 1 and 12.
 		 */
 		public function month( $field ) {
-			$t = strtotime( $field );
-
-			return gmdate( 'n', $t );
+			return gmdate( 'n', strtotime( $field ) );
 		}
 
 		/**
@@ -231,9 +218,7 @@ HTML
 		 * @return string representing the number of the year.
 		 */
 		public function year( $field ) {
-			$t = strtotime( $field );
-
-			return gmdate( 'Y', $t );
+			return gmdate( 'Y', strtotime( $field ) );
 		}
 
 		/**
@@ -244,9 +229,7 @@ HTML
 		 * @return string representing the number of the day of the month from 1 and 31.
 		 */
 		public function day( $field ) {
-			$t = strtotime( $field );
-
-			return gmdate( 'j', $t );
+			return gmdate( 'j', strtotime( $field ) );
 		}
 
 		/**
@@ -272,9 +255,7 @@ HTML
 		 * @return number of unsigned integer
 		 */
 		public function second( $field ) {
-			$t = strtotime( $field );
-
-			return intval( gmdate( 's', $t ) );
+			return intval( gmdate( 's', strtotime( $field ) ) );
 		}
 
 		/**
@@ -285,9 +266,7 @@ HTML
 		 * @return number of unsigned integer
 		 */
 		public function minute( $field ) {
-			$t = strtotime( $field );
-
-			return intval( gmdate( 'i', $t ) );
+			return intval( gmdate( 'i', strtotime( $field ) ) );
 		}
 
 		/**
@@ -457,20 +436,18 @@ HTML
 				case 'curdate()':
 					$date_object = new DateTime( $this->curdate() );
 					$date_object->add( new DateInterval( $interval ) );
-					$formatted = $date_object->format( 'Y-m-d' );
-					break;
+					return $date_object->format( 'Y-m-d' );
+
 				case 'now()':
 					$date_object = new DateTime( $this->now() );
 					$date_object->add( new DateInterval( $interval ) );
-					$formatted = $date_object->format( 'Y-m-d H:i:s' );
-					break;
+					return $date_object->format( 'Y-m-d H:i:s' );
+
 				default:
 					$date_object = new DateTime( $date );
 					$date_object->add( new DateInterval( $interval ) );
-					$formatted = $date_object->format( 'Y-m-d H:i:s' );
+					return $date_object->format( 'Y-m-d H:i:s' );
 			}
-
-			return $formatted;
 		}
 
 		/**
@@ -492,20 +469,18 @@ HTML
 				case 'curdate()':
 					$date_object = new DateTime( $this->curdate() );
 					$date_object->sub( new DateInterval( $interval ) );
-					$returnval = $date_object->format( 'Y-m-d' );
-					break;
+					return $date_object->format( 'Y-m-d' );
+
 				case 'now()':
 					$date_object = new DateTime( $this->now() );
 					$date_object->sub( new DateInterval( $interval ) );
-					$returnval = $date_object->format( 'Y-m-d H:i:s' );
-					break;
+					return $date_object->format( 'Y-m-d H:i:s' );
+
 				default:
 					$date_object = new DateTime( $date );
 					$date_object->sub( new DateInterval( $interval ) );
-					$returnval = $date_object->format( 'Y-m-d H:i:s' );
+					return $date_object->format( 'Y-m-d H:i:s' );
 			}
-
-			return $returnval;
 		}
 
 		/**
@@ -528,70 +503,55 @@ HTML
 			$type = strtolower( end( $_parts ) );
 			switch ( $type ) {
 				case 'second':
-					$unit = 'S';
+					return 'PT' . $_parts[0] . 'S';
 
-					return 'PT' . $_parts[0] . $unit;
-					break;
 				case 'minute':
-					$unit = 'M';
+					return 'PT' . $_parts[0] . 'M';
 
-					return 'PT' . $_parts[0] . $unit;
-					break;
 				case 'hour':
-					$unit = 'H';
+					return 'PT' . $_parts[0] . 'H';
 
-					return 'PT' . $_parts[0] . $unit;
-					break;
 				case 'day':
-					$unit = 'D';
+					return 'P' . $_parts[0] . 'D';
 
-					return 'P' . $_parts[0] . $unit;
-					break;
 				case 'week':
-					$unit = 'W';
+					return 'P' . $_parts[0] . 'W';
 
-					return 'P' . $_parts[0] . $unit;
-					break;
 				case 'month':
-					$unit = 'M';
+					return 'P' . $_parts[0] . 'M';
 
-					return 'P' . $_parts[0] . $unit;
-					break;
 				case 'year':
-					$unit = 'Y';
+					return 'P' . $_parts[0] . 'Y';
 
-					return 'P' . $_parts[0] . $unit;
-					break;
 				case 'minute_second':
 					list($minutes, $seconds) = explode( ':', $_parts[0] );
-
 					return 'PT' . $minutes . 'M' . $seconds . 'S';
+
 				case 'hour_second':
 					list($hours, $minutes, $seconds) = explode( ':', $_parts[0] );
-
 					return 'PT' . $hours . 'H' . $minutes . 'M' . $seconds . 'S';
+
 				case 'hour_minute':
 					list($hours, $minutes) = explode( ':', $_parts[0] );
-
 					return 'PT' . $hours . 'H' . $minutes . 'M';
+
 				case 'day_second':
 					$days                            = intval( $_parts[0] );
 					list($hours, $minutes, $seconds) = explode( ':', $_parts[1] );
-
 					return 'P' . $days . 'D' . 'T' . $hours . 'H' . $minutes . 'M' . $seconds . 'S';
+
 				case 'day_minute':
 					$days                  = intval( $_parts[0] );
 					list($hours, $minutes) = explode( ':', $parts[1] );
-
 					return 'P' . $days . 'D' . 'T' . $hours . 'H' . $minutes . 'M';
+
 				case 'day_hour':
 					$days  = intval( $_parts[0] );
 					$hours = intval( $_parts[1] );
-
 					return 'P' . $days . 'D' . 'T' . $hours . 'H';
+
 				case 'year_month':
 					list($years, $months) = explode( '-', $_parts[0] );
-
 					return 'P' . $years . 'Y' . $months . 'M';
 			}
 		}
@@ -690,9 +650,8 @@ HTML
 			$num_args = func_num_args();
 			if ( $num_args < 2 or is_null( func_get_arg( 0 ) ) ) {
 				return 0;
-			} else {
-				$arg_list = func_get_args();
 			}
+			$arg_list      = func_get_args();
 			$search_string = array_shift( $arg_list );
 			$str_to_check  = substr( $search_string, 0, strpos( $search_string, '.' ) );
 			$str_to_check  = str_replace( $wpdb->prefix, '', $str_to_check );
@@ -735,14 +694,14 @@ HTML
 				$arg1 = func_get_arg( 0 );
 
 				return log( $arg1 );
-			} elseif ( 2 == $num_args ) {
+			}
+			if ( 2 == $num_args ) {
 				$arg1 = func_get_arg( 0 );
 				$arg2 = func_get_arg( 1 );
 
 				return log( $arg1 ) / log( $arg2 );
-			} else {
-				return null;
 			}
+			return null;
 		}
 
 		/**
@@ -889,17 +848,14 @@ HTML
 				$val = strpos( $str, $substr, $pos );
 				if ( false !== $val ) {
 					return $val + 1;
-				} else {
-					return 0;
 				}
-			} else {
-				$val = mb_strpos( $str, $substr, $pos );
-				if ( false !== $val ) {
-					return $val + 1;
-				} else {
-					return 0;
-				}
+				return 0;
 			}
+			$val = mb_strpos( $str, $substr, $pos );
+			if ( false !== $val ) {
+				return $val + 1;
+			}
+			return 0;
 		}
 
 		/**
@@ -1331,30 +1287,30 @@ HTML
 					}
 					break;
 				case 'create':
-					$result             = $this->execute_create_query( $statement );
-					$this->return_value = $result;
+					$this->return_value = $this->execute_create_query( $statement );
 					break;
+
 				case 'alter':
-					$result             = $this->execute_alter_query( $statement );
-					$this->return_value = $result;
+					$this->return_value = $this->execute_alter_query( $statement );
 					break;
+
 				case 'show_variables':
 					$this->return_value = $this->show_variables_workaround( $statement );
 					break;
+
 				case 'showstatus':
 					$this->return_value = $this->show_status_workaround( $statement );
 					break;
+
 				case 'drop_index':
-					$pattern = '/^\\s*(DROP\\s*INDEX\\s*.*?)\\s*ON\\s*(.*)/im';
+					$this->return_value = false;
+					$pattern            = '/^\\s*(DROP\\s*INDEX\\s*.*?)\\s*ON\\s*(.*)/im';
 					if ( preg_match( $pattern, $statement, $match ) ) {
-						$drop_query         = 'ALTER TABLE ' . trim( $match[2] ) . ' ' . trim( $match[1] );
 						$this->query_type   = 'alter';
-						$result             = $this->execute_alter_query( $drop_query );
-						$this->return_value = $result;
-					} else {
-						$this->return_value = false;
+						$this->return_value = $this->execute_alter_query( 'ALTER TABLE ' . trim( $match[2] ) . ' ' . trim( $match[1] ) );
 					}
 					break;
+
 				default:
 					$engine                = $this->prepare_engine( $this->query_type );
 					$this->rewritten_query = $engine->rewrite_query( $statement, $this->query_type );
@@ -1436,10 +1392,9 @@ HTML
 					'unsigned'     => 0,  // 1 if column is unsigned integer
 					'zerofill'     => 0,   // 1 if column is zero-filled
 				);
+				$table_name = '';
 				if ( preg_match( '/\s*FROM\s*(.*)?\s*/i', $this->rewritten_query, $match ) ) {
 					$table_name = trim( $match[1] );
-				} else {
-					$table_name = '';
 				}
 				foreach ( $this->results[0] as $key => $value ) {
 					$data['name']  = $key;
@@ -1460,9 +1415,8 @@ HTML
 				}
 
 				return $this->column_data;
-			} else {
-				return null;
 			}
+			return null;
 		}
 
 		/**
@@ -1687,6 +1641,7 @@ HTML
 					$this->affected_rows  = $statement->rowCount();
 					$this->return_value   = $this->affected_rows;
 					break;
+
 				case 'select':
 				case 'show':
 				case 'showcolumns':
@@ -1699,19 +1654,20 @@ HTML
 					$this->num_rows     = count( $this->_results );
 					$this->return_value = $this->num_rows;
 					break;
+
 				case 'delete':
 					$this->affected_rows = $statement->rowCount();
 					$this->return_value  = $this->affected_rows;
 					break;
+
 				case 'alter':
 				case 'drop':
 				case 'create':
 				case 'optimize':
 				case 'truncate':
+					$this->return_value = true;
 					if ( $this->is_error ) {
 						$this->return_value = false;
-					} else {
-						$this->return_value = true;
 					}
 					break;
 			}
@@ -1822,28 +1778,28 @@ HTML
 			if ( stripos( $this->query_type, 'show' ) !== false ) {
 				if ( stripos( $this->query_type, 'show table status' ) !== false ) {
 					$this->query_type = 'showstatus';
-				} elseif ( stripos( $this->query_type, 'show tables' ) !== false || stripos(
-					$this->query_type,
-					'show full tables'
-				) !== false ) {
+				} elseif (
+					stripos( $this->query_type, 'show tables' ) !== false ||
+					stripos( $this->query_type, 'show full tables' ) !== false
+				) {
 					$this->query_type = 'show';
-				} elseif ( stripos( $this->query_type, 'show columns' ) !== false || stripos(
-					$this->query_type,
-					'show fields'
-				) !== false || stripos( $this->query_type, 'show full columns' ) !== false ) {
+				} elseif (
+					stripos( $this->query_type, 'show columns' ) !== false ||
+					stripos( $this->query_type, 'show fields' ) !== false ||
+					stripos( $this->query_type, 'show full columns' ) !== false
+				) {
 					$this->query_type = 'showcolumns';
-				} elseif ( stripos( $this->query_type, 'show index' ) !== false || stripos(
-					$this->query_type,
-					'show indexes'
-				) !== false || stripos( $this->query_type, 'show keys' ) !== false ) {
+				} elseif (
+					stripos( $this->query_type, 'show index' ) !== false ||
+					stripos( $this->query_type, 'show indexes' ) !== false ||
+					stripos( $this->query_type, 'show keys' ) !== false
+				) {
 					$this->query_type = 'showindex';
-				} elseif ( stripos( $this->query_type, 'show variables' ) !== false || stripos(
-					$this->query_type,
-					'show global variables'
-				) !== false || stripos(
-					$this->query_type,
-					'show session variables'
-				) !== false ) {
+				} elseif (
+					stripos( $this->query_type, 'show variables' ) !== false ||
+					stripos( $this->query_type, 'show global variables' ) !== false ||
+					stripos( $this->query_type, 'show session variables' ) !== false
+				) {
 					$this->query_type = 'show_variables';
 				} else {
 					return false;
@@ -1904,11 +1860,8 @@ HTML
 			if ( $multi_insert ) {
 				$first = true;
 				foreach ( $exploded_parts as $value ) {
-					if ( substr( $value, -1, 1 ) === ')' ) {
-						$suffix = '';
-					} else {
-						$suffix = ')';
-					}
+					$suffix = ( substr( $value, -1, 1 ) === ')' ) ? '' : ')';
+
 					$query_string              = $query_prefix . ' ' . $value . $suffix;
 					$this->rewritten_query     = $engine->rewrite_query( $query_string, $this->query_type );
 					$this->queries[]           = "Rewritten:\n" . $this->rewritten_query;
@@ -1956,12 +1909,8 @@ HTML
 						}
 						break;
 					case "'":
-						if ( $literal ) {
-							$literal = false;
-						} else {
-							$literal = true;
-						}
-						$part .= $token;
+						$literal = ! $literal;
+						$part   .= $token;
 						break;
 					default:
 						$part .= $token;
@@ -2095,10 +2044,9 @@ HTML
 				$value                       = str_replace( "'", '', $match[1] );
 				$dummy_data['Variable_name'] = trim( $value );
 				// this is set for Wordfence Security Plugin
+				$dummy_data['Value'] = '';
 				if ( 'max_allowed_packet' === $value ) {
 					$dummy_data['Value'] = 1047552;
-				} else {
-					$dummy_data['Value'] = '';
 				}
 			}
 			$_results[]         = new ObjectArray( $dummy_data );
@@ -4865,4 +4813,3 @@ namespace {
 
 	$GLOBALS['wpdb'] = new WP_SQLite_DB\WP_SQLite_DB();
 }
-
