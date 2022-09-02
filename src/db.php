@@ -2251,18 +2251,15 @@ HTML
 							}
 							break;
 						case 'index':
+							$_columns['Non_unique'] = 1;
 							if ( stripos( $row->sql, 'unique' ) !== false ) {
 								$_columns['Non_unique'] = 0;
-							} else {
-								$_columns['Non_unique'] = 1;
 							}
 							if ( preg_match( '/^.*\((.*)\)/i', $row->sql, $match ) ) {
 								$col_name                = str_replace( "'", '', $match[1] );
 								$_columns['Column_name'] = trim( $col_name );
 							}
 							$_columns['Key_name'] = $row->name;
-							break;
-						default:
 							break;
 					}
 					$_columns['Table']       = $row->tbl_name;
@@ -2300,19 +2297,18 @@ HTML
 		 */
 		private function convert_result_check_or_analyze() {
 			$results = array();
+			$_columns = array(
+				'Table'    => '',
+				'Op'       => 'analyze',
+				'Msg_type' => 'status',
+				'Msg_text' => 'Table is already up to date',
+			);
 			if ( 'check' === $this->query_type ) {
 				$_columns = array(
 					'Table'    => '',
 					'Op'       => 'check',
 					'Msg_type' => 'status',
 					'Msg_text' => 'OK',
-				);
-			} else {
-				$_columns = array(
-					'Table'    => '',
-					'Op'       => 'analyze',
-					'Msg_type' => 'status',
-					'Msg_text' => 'Table is already up to date',
 				);
 			}
 			$_results[]    = new ObjectArray( $_columns );
@@ -2348,11 +2344,9 @@ HTML
 		public function beginTransaction() {
 			if ( $this->has_active_transaction ) {
 				return false;
-			} else {
-				$this->has_active_transaction = $this->pdo->beginTransaction();
-
-				return $this->has_active_transaction;
 			}
+			$this->has_active_transaction = $this->pdo->beginTransaction();
+			return $this->has_active_transaction;
 		}
 
 		/**
@@ -2511,11 +2505,7 @@ HTML
 
 			if ( ! $str ) {
 				$err = $this->dbh->get_error_message() ? $this->dbh->get_error_message() : '';
-				if ( ! empty( $err ) ) {
-					$str = $err[2];
-				} else {
-					$str = '';
-				}
+				$str = empty( $err ) ? '' : $err[2];
 			}
 			$EZSQL_ERROR[] = array(
 				'query'     => $this->last_query,
@@ -2658,21 +2648,18 @@ HTML
 			}
 
 			if ( preg_match( '/^\\s*(create|alter|truncate|drop|optimize)\\s*/i', $query ) ) {
-				//$return_val = $this->result;
-				$return_val = $this->dbh->get_return_value();
-			} elseif ( preg_match( '/^\\s*(insert|delete|update|replace)\s/i', $query ) ) {
+				return $this->dbh->get_return_value();
+			}
+			if ( preg_match( '/^\\s*(insert|delete|update|replace)\s/i', $query ) ) {
 				$this->rows_affected = $this->dbh->get_affected_rows();
 				if ( preg_match( '/^\s*(insert|replace)\s/i', $query ) ) {
 					$this->insert_id = $this->dbh->get_insert_id();
 				}
-				$return_val = $this->rows_affected;
-			} else {
-				$this->last_result = $this->dbh->get_query_results();
-				$this->num_rows    = $this->dbh->get_num_rows();
-				$return_val        = $this->num_rows;
+				return $this->rows_affected;
 			}
-
-			return $return_val;
+			$this->last_result = $this->dbh->get_query_results();
+			$this->num_rows    = $this->dbh->get_num_rows();
+			return $this->num_rows;
 		}
 
 		/**
@@ -2705,16 +2692,7 @@ HTML
 		 * @return int|false Whether the database feature is supported, false otherwise.
 		 */
 		public function has_cap( $db_cap ) {
-			switch ( strtolower( $db_cap ) ) {
-				case 'collation':
-				case 'group_concat':
-				case 'set_charset':
-					return false;
-				case 'subqueries':
-					return true;
-				default:
-					return false;
-			}
+			return 'subqueries' === strtolower( $db_cap );
 		}
 
 		/**
@@ -2804,25 +2782,32 @@ HTML
 				case 'truncate':
 					$this->handle_truncate_query();
 					break;
+
 				case 'alter':
 					$this->handle_alter_query();
 					break;
+
 				case 'create':
 					$this->handle_create_query();
 					break;
+
 				case 'describe':
 				case 'desc':
 					$this->handle_describe_query();
 					break;
+
 				case 'show':
 					$this->handle_show_query();
 					break;
+
 				case 'showcolumns':
 					$this->handle_show_columns_query();
 					break;
+
 				case 'showindex':
 					$this->handle_show_index();
 					break;
+
 				case 'select':
 					//$this->strip_backticks();
 					$this->handle_sql_count();
@@ -2834,6 +2819,7 @@ HTML
 					$this->rewrite_between();
 					$this->handle_orderby_field();
 					break;
+
 				case 'insert':
 					//$this->safe_strip_backticks();
 					$this->execute_duplicate_key_update();
@@ -2841,6 +2827,7 @@ HTML
 					$this->rewrite_regexp();
 					$this->fix_date_quoting();
 					break;
+
 				case 'update':
 					//$this->safe_strip_backticks();
 					$this->rewrite_update_ignore();
@@ -2850,6 +2837,7 @@ HTML
 					$this->rewrite_regexp();
 					$this->rewrite_between();
 					break;
+
 				case 'delete':
 					//$this->strip_backticks();
 					$this->rewrite_limit_usage();
@@ -2858,16 +2846,20 @@ HTML
 					$this->rewrite_regexp();
 					$this->delete_workaround();
 					break;
+
 				case 'replace':
 					//$this->safe_strip_backticks();
 					$this->rewrite_date_sub();
 					$this->rewrite_regexp();
 					break;
+
 				case 'optimize':
 					$this->rewrite_optimize();
 					break;
+
 				case 'pragma':
 					break;
+
 				default:
 					if ( defined( WP_DEBUG ) && WP_DEBUG ) {
 						break;
@@ -2894,11 +2886,7 @@ HTML
 			$query_string = '';
 			foreach ( $tokens as $token ) {
 				if ( "'" === $token ) {
-					if ( $literal ) {
-						$literal = false;
-					} else {
-						$literal = true;
-					}
+					$literal = ! $literal;
 				} else {
 					if ( false === $literal ) {
 						if ( strpos( $token, '`' ) !== false ) {
@@ -2951,11 +2939,7 @@ HTML
 			if ( preg_match( $pattern, $this->_query, $matches ) ) {
 				$table_name = str_replace( array( "'", ';' ), '', $matches[2] );
 			}
-			if ( ! empty( $table_name ) ) {
-				$suffix = ' AND name LIKE ' . "'" . $table_name . "'";
-			} else {
-				$suffix = '';
-			}
+			$suffix       = empty( $table_name ) ? '' : ' AND name LIKE ' . "'" . $table_name . "'";
 			$this->_query = "SELECT name FROM sqlite_master WHERE type='table'" . $suffix . ' ORDER BY name DESC';
 		}
 
@@ -3210,9 +3194,7 @@ HTML
 		 * @access private
 		 */
 		private function _fix_date_quoting( $match ) {
-			$fixed_val = "{$match[1]}({$match[2]})='" . intval( $match[3] ) . "' ";
-
-			return $fixed_val;
+			return "{$match[1]}({$match[2]})='" . intval( $match[3] ) . "' ";
 		}
 
 		/**
