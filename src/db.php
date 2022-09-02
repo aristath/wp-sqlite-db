@@ -116,13 +116,13 @@ if ( defined( 'DB_FILE' ) ) {
  * Usage:
  *
  * <code>
- * new WP_PDO_SQLite_UDFS(ref_to_pdo_obj);
+ * new WP_PDO_SQLite_User_Defined_Functions(ref_to_pdo_obj);
  * </code>
  *
  * This automatically enables ref_to_pdo_obj to replace the function in the SQL statement
  * to the ones defined here.
  */
-class WP_PDO_SQLite_UDFS {
+class WP_PDO_SQLite_User_Defined_Functions {
 
 	/**
 	 * The class constructor
@@ -1077,7 +1077,7 @@ class WP_PDO_Engine extends PDO {
 			do {
 				try {
 					$this->pdo = new PDO( $dsn, null, null, array( PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION ) );
-					new WP_PDO_SQLite_UDFS( $this->pdo );
+					new WP_PDO_SQLite_User_Defined_Functions( $this->pdo );
 					$GLOBALS['@pdo'] = $this->pdo;
 				} catch ( PDOException $ex ) {
 					$status = $ex->getCode();
@@ -2393,7 +2393,7 @@ class WP_SQLite_Object_Array {
  *
  * It also rewrites some methods that use mysql specific functions.
  */
-class WP_SQLite_DB extends \wpdb {
+class WP_SQLite_DB extends wpdb {
 
 	/**
 	 * Database Handle
@@ -2708,7 +2708,6 @@ class WP_SQLite_DB extends \wpdb {
  *
  */
 class WP_PDO_SQLite_Driver {
-
 
 	/**
 	 * Variable to indicate the query types.
@@ -3499,7 +3498,6 @@ class WP_PDO_SQLite_Driver {
  *
  */
 class WP_SQLite_Create_Query {
-
 
 	/**
 	 * The query string to be rewritten in this class.
